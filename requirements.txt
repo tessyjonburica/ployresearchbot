@@ -1,0 +1,14 @@
+# Core dependencies
+requests>=2.31.0
+python-dotenv>=1.0.0
+
+# Scheduling
+APScheduler>=3.10.0
+pytz>=2023.3
+
+# Telegram notifications
+python-telegram-bot>=20.0
+
+# Note: anthropic package is optional - the bot uses direct API calls
+# If you want to use the anthropic SDK instead, uncomment:
+# anthropic>=0.18.0
