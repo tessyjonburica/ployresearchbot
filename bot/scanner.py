@@ -118,6 +118,8 @@ def _normalize_markets(api_data: list[dict]) -> list[Market]:
         logger.warning(f"Expected list of markets, got {type(api_data)}")
         return markets
     
+
+        
     for idx, market_data in enumerate(api_data):
         try:
             market = _parse_market(market_data)
@@ -157,8 +159,7 @@ def _parse_market(data: dict) -> Optional[Market]:
         description = data.get("description") or data.get("question") or ""
         
         # Probability calculation from outcomePrices
-        # Polymarket provides outcomePrices as array of strings
-        # For binary markets: ["Yes", "No"] -> prices: ["0.65", "0.35"]
+        # Polymarket provides outcomePrices as a JSON string: '["0.65", "0.35"]'
         probability = _extract_probability(data)
         
         # Liquidity (may be string or number)
@@ -170,7 +171,7 @@ def _parse_market(data: dict) -> Optional[Market]:
         # Additional useful fields
         slug = data.get("slug", "")
         category = data.get("category", "")
-        volume_24h = _safe_float(data.get("volume24h") or data.get("volume_24h"), 0.0)
+        volume_24h = _safe_float(data.get("volume24h") or data.get("volume_24h") or data.get("volume24hr"), 0.0)
         
         return Market(
             id=str(market_id),
@@ -193,42 +194,55 @@ def _extract_probability(data: dict) -> float:
     """
     Extract probability from market data.
     
-    For binary markets, extracts the "Yes" outcome probability.
-    Falls back to first outcome if "Yes" is not found.
-    Returns 0.5 if no probability data is available.
-    
-    Args:
-        data: Market data dictionary.
-    
-    Returns:
-        Probability as float between 0.0 and 1.0.
+    Handles API response where fields are often JSON strings.
     """
-    outcomes = data.get("outcomes", [])
-    outcome_prices = data.get("outcomePrices", [])
-    
-    if not outcomes or not outcome_prices:
-        logger.debug("Market missing outcomes or outcomePrices, defaulting to 0.5")
-        return 0.5
-    
-    # Ensure we have matching arrays
-    if len(outcomes) != len(outcome_prices):
-        logger.debug(f"Mismatched outcomes ({len(outcomes)}) and prices ({len(outcome_prices)})")
-        return 0.5
-    
-    # Try to find "Yes" outcome first
     try:
-        yes_index = outcomes.index("Yes")
-        probability_str = outcome_prices[yes_index]
-        return _safe_float(probability_str, 0.5)
-    except (ValueError, IndexError):
-        pass
-    
-    # Fallback to first outcome
-    try:
-        probability_str = outcome_prices[0]
-        return _safe_float(probability_str, 0.5)
-    except (IndexError, TypeError):
+        import json
+        
+        # Method 1: outcomePrices (most common)
+        # Format: '["0.65", "0.35"]' (string) OR ["0.65", "0.35"] (list)
+        outcome_prices = data.get("outcomePrices")
+        outcomes = data.get("outcomes")
+        
+        # Parse JSON strings if needed
+        if isinstance(outcome_prices, str):
+            try:
+                outcome_prices = json.loads(outcome_prices)
+            except:
+                pass
+                
+        if isinstance(outcomes, str):
+            try:
+                outcomes = json.loads(outcomes)
+            except:
+                pass
+        
+        # Ensure we have lists
+        if not isinstance(outcome_prices, list) or not outcome_prices:
+            # Try fallback to bestBid/bestAsk
+            best_bid = data.get("bestBid")
+            best_ask = data.get("bestAsk")
+            if best_bid and best_ask:
+                return (float(best_bid) + float(best_ask)) / 2.0
+            return 0.5
+            
+        # Try to find "Yes" outcome
+        if isinstance(outcomes, list):
+            try:
+                yes_index = outcomes.index("Yes")
+                return float(outcome_prices[yes_index])
+            except (ValueError, IndexError):
+                pass
+                
+        # Default to first outcome (usually Yes for binary)
+        return float(outcome_prices[0]) if outcome_prices else 0.5
+        
+    except Exception as e:
+        logger.debug(f"Error extracting probability: {e}")
         return 0.5
+
+
+
 
 
 def _parse_end_date(date_str: Optional[str]) -> Optional[datetime]:

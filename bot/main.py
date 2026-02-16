@@ -144,6 +144,46 @@ def run_pipeline() -> Optional[list[RankedOpportunity]]:
     
     logger.info(f"Fetched {len(markets)} markets")
     
+    # --- TEMPORARY: Send scanned markets to Telegram ---
+    try:
+        from bot.telegram_notifier import send_notification
+        
+        # Format the top 20 markets with more details
+        count = len(markets)
+        lines = [f"🔍 *Scanned {count} Markets (Showing Top 20)*\n"]
+        
+        for i, m in enumerate(markets[:20], 1):
+            # Clean title
+            safe_title = m.title.replace("*", "").replace("_", "").replace("[", "").replace("]", "")
+            
+            # Format numbers
+            prob = m.probability * 100
+            liq = f"${m.liquidity:,.0f}"
+            vol = f"${m.volume_24h:,.0f}"
+            
+            # Format date
+            date_str = "No date"
+            if m.end_date:
+                date_str = m.end_date.strftime("%b %d")
+            
+            # Create detailed entry
+            entry = (
+                f"*{i}. {safe_title}*\n"
+                f"   📊 Prob: {prob:.1f}% | 📅 {date_str}\n"
+                f"   💧 Liq: {liq} | 📉 Vol: {vol}\n"
+            )
+            lines.append(entry)
+            
+        if count > 20:
+            lines.append(f"...and {count-20} more markets.")
+            
+        # Send as one message (Telegram limit is 4096 chars)
+        send_notification("\n".join(lines))
+        logger.info("Sent detailed market list to Telegram")
+    except Exception as e:
+        logger.error(f"Failed to send temporary Telegram message: {e}")
+    # ---------------------------------------------------
+    
     # Save all fetched markets
     for market in markets:
         storage.save_market(market)

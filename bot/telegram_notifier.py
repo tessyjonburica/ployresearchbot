@@ -112,13 +112,18 @@ def send_telegram_message(message: str) -> bool:
         logger.debug(f"Sending message to Telegram chat {chat_id}")
         
         # Send message with timeout
-        bot.send_message(
+        # Send message with timeout (wrapped in asyncio.run for v20+ support)
+        import asyncio
+        asyncio.run(bot.send_message(
             chat_id=chat_id,
             text=message,
             parse_mode="Markdown",
             disable_web_page_preview=True,
-            timeout=Config.API_TIMEOUT
-        )
+            read_timeout=Config.API_TIMEOUT,
+            write_timeout=Config.API_TIMEOUT,
+            connect_timeout=Config.API_TIMEOUT,
+            pool_timeout=Config.API_TIMEOUT
+        ))
         
         logger.info("Telegram message sent successfully")
         return True
