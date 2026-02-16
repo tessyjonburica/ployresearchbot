@@ -15,7 +15,7 @@ import argparse
 import logging
 import signal
 import sys
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Optional
 
@@ -72,7 +72,7 @@ def filter_markets(markets: list[Market]) -> list[Market]:
     logger.info(f"Filtering {len(markets)} markets")
     
     filtered = []
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc).replace(tzinfo=None)  # Get UTC time without timezone info
     
     for market in markets:
         # Check liquidity

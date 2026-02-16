@@ -8,9 +8,9 @@ It handles table creation, insertion, and retrieval with parameterized queries.
 import json
 import logging
 import sqlite3
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
-from typing import Optional, list
+from typing import Optional
 from contextlib import contextmanager
 
 from bot.config import Config
@@ -174,7 +174,7 @@ class Storage:
             True if successful, False otherwise
         """
         try:
-            now = datetime.utcnow().isoformat()
+            now = datetime.now(timezone.utc).replace(tzinfo=None).isoformat()
             
             with self._get_connection() as conn:
                 cursor = conn.cursor()
@@ -295,7 +295,7 @@ class Storage:
             True if successful, False otherwise
         """
         try:
-            now = datetime.utcnow().isoformat()
+            now = datetime.now(timezone.utc).replace(tzinfo=None).isoformat()
             
             with self._get_connection() as conn:
                 cursor = conn.cursor()
@@ -510,7 +510,7 @@ class Storage:
             True if successful, False otherwise
         """
         try:
-            now = datetime.utcnow().isoformat()
+            now = datetime.now(timezone.utc).replace(tzinfo=None).isoformat()
             
             with self._get_connection() as conn:
                 cursor = conn.cursor()
